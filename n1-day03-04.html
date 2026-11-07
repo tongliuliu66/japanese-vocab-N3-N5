@@ -87,12 +87,15 @@ table.fx th{background:#faf1cc}
 .kanji-only .card:not(.rev) rt{visibility:hidden}.kanji-only .card:not(.rev){cursor:pointer}.kanji-only .card:not(.rev) .hw::after{content:"点击翻开";font-size:.6em;color:#999}
 .tag.day{background:#222;color:#fff}.tag.man{background:#eaf0fc;color:#1d5fd1}
 .tag.src{background:#fdeef6;color:#9a2a63}.tag.add{background:#f3f3f3;color:#777}
-#quiz{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;overflow:auto;padding:16px}
+#quiz{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;overflow:auto;-webkit-overflow-scrolling:touch;padding:16px;padding:calc(16px + constant(safe-area-inset-top)) 16px calc(16px + constant(safe-area-inset-bottom));padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))}
 #quiz .qbox{background:#fff;max-width:640px;margin:20px auto;border-radius:18px;padding:18px}
 #quiz .qw{font-size:2.2em;font-weight:700;text-align:center;line-height:2}
-#quiz .opt{display:block;width:100%;text-align:left;margin:8px 0;padding:14px;min-height:56px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1em;font-family:inherit;cursor:pointer;color:var(--ink)}
+#quiz .opt{display:block;width:100%;text-align:left;margin:8px 0;padding:14px;min-height:56px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1em;font-family:inherit;cursor:pointer;color:var(--ink);touch-action:manipulation}
 #quiz .opt.ok{border-color:#1c8b3c;background:#e6f5ea}#quiz .opt.ng{border-color:#c0392b;background:#fde8e6}
-#quiz .qtop{display:flex;justify-content:space-between;align-items:center;font-size:.8em;color:var(--sub)}
+#quiz .qtop{display:flex;justify-content:space-between;align-items:center;gap:6px 10px;flex-wrap:wrap;font-size:.8em;color:var(--sub)}
+#quiz .qtop #qclose{margin-left:auto;flex:none;touch-action:manipulation}
+#quiz #qcont{display:block;width:100%;text-align:center;margin:8px 0;padding:14px;min-height:48px;font-size:1em;font-weight:700;touch-action:manipulation}
+#quiz .qnote{text-align:center;color:var(--sub);font-size:.92em;margin:4px 0 8px;line-height:1.45}
 #quiz .fb{min-height:1.6em;font-weight:700;margin:6px 0}
 </style>
 </head>
@@ -358,47 +361,119 @@ $('total').textContent=E.length;
 $('unidic-n').textContent=E.filter(function(e){return e.accent_source==='手动'}).length;
 $('upd').textContent=D.meta.updated||'';
 // ---------- quiz
-var Q={list:[],i:0,ok:0,done:0,dir:'j2c'};
+var Q={list:[],i:0,ok:0,done:0,dir:'j2c',round:0,firstOk:0,firstN:0,miss:[],phase:'idle'};
 // plausible wrong readings: long/short vowel, voicing, small tsu, ょう/よ swaps
 function fakeReadings(e){var r=e.reading,out=[];
   var sw=[['ょう','ょ'],['ゅう','ゅ'],['ょ','ょう'],['ゅ','ゅう'],['っ','つ'],['こう','ごう'],['しょ','じょ'],['じょ','しょ'],['か','が'],['き','ぎ'],['こ','ご'],['さ','ざ'],['し','じ'],['せ','ぜ'],['そ','ぞ'],['た','だ'],['て','で'],['と','ど'],['は','ば'],['ひ','び'],['ほ','ぼ'],['けい','け'],['えい','え'],['ん','']];
   sw.forEach(function(p){var k=r.indexOf(p[0]);if(k>=0)out.push(r.slice(0,k)+p[1]+r.slice(k+p[0].length))});
   return shuffle(out.filter(function(x){return x&&x!==r&&!/[ゅょ]うう/.test(x)&&!E.some(function(y){return y.reading===x&&y.headword===e.headword})}));}
 function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
-function startQuiz(){var src=visible.length>=4?visible:E;Q.list=shuffle(src.slice()).slice(0,Math.min(20,src.length));Q.i=0;Q.ok=0;Q.done=0;stopAll();$('quiz').style.display='block';document.body.style.overflow='hidden';showQ()}
+function quizSource(){return visible.length?visible.slice():E.slice()}
+function startQuiz(){
+  var picked=document.querySelector('input[name=qdir]:checked');
+  if(picked)Q.dir=picked.value;
+  var src=quizSource();
+  Q.list=shuffle(src).slice(0,Math.min(20,src.length));
+  Q.i=0;Q.ok=0;Q.done=0;Q.round=0;Q.firstOk=0;Q.firstN=0;Q.miss=[];Q.phase='ask';
+  stopAll();
+  $('quiz').style.display='block';
+  document.body.style.overflow='hidden';
+  showQ();
+}
+function scoreLine(){
+  if(Q.round===0)return '答对 '+Q.ok+' / '+Q.done;
+  return '首轮 '+Q.firstOk+' / '+Q.firstN+' · 待练 '+(Q.list.length-Q.ok);
+}
+function progLine(){
+  if(Q.round===0)return '第 '+(Q.i+1)+' / '+Q.list.length+' 题';
+  return '错题第 '+Q.round+' 轮 · 第 '+(Q.i+1)+' / '+Q.list.length;
+}
 function showQ(){
-  var e=Q.list[Q.i];$('qnext').style.display='none';$('qfb').textContent='';$('qex').innerHTML='';
-  $('qprog').textContent='第 '+(Q.i+1)+' / '+Q.list.length+' 题';$('qscore').textContent='答对 '+Q.ok+' / '+Q.done;
+  Q.phase='ask';
+  var e=Q.list[Q.i];
+  $('qnext').style.display='none';$('qfb').textContent='';$('qex').innerHTML='';
+  $('qprog').textContent=progLine();$('qscore').textContent=scoreLine();
   var pool=shuffle(E.filter(function(x){return x.id!==e.id&&x.meaning_zh!==e.meaning_zh&&(Q.dir!=='rd'||x.reading!==e.reading)}));
   if(Q.dir==='rd'){var fk=fakeReadings(e);var ds2=[],seen={};seen[e.reading]=1;
     fk.concat(pool.filter(function(x){return morae(x.reading).length===morae(e.reading).length}).map(function(x){return x.reading})).concat(pool.map(function(x){return x.reading})).forEach(function(r){if(ds2.length<3&&!seen[r]){seen[r]=1;ds2.push(r)}});
-    var ro=shuffle([e.reading].concat(ds2));Q.ropts=ro;
+    var ro=shuffle([e.reading].concat(ds2));
     $('qw').innerHTML=esc(e.headword);$('qpitch').innerHTML='';$('qplay').style.display='none';
-    $('qopts').innerHTML=ro.map(function(r,i){return '<button class="opt" data-r="'+esc(r)+'" data-id="'+(r===e.reading?e.id:-1)+'">'+'ABCD'[i]+'. '+esc(r)+'</button>'}).join('');return}
+    $('qopts').innerHTML=ro.map(function(r,i){return '<button class="opt" type="button" data-r="'+esc(r)+'" data-id="'+(r===e.reading?e.id:-1)+'">'+'ABCD'[i]+'. '+esc(r)+'</button>'}).join('');
+    return}
   var same=pool.filter(function(x){return x.section===e.section});var ds=same.slice(0,3);
   for(var k=0;ds.length<3&&k<pool.length;k++)if(ds.indexOf(pool[k])<0)ds.push(pool[k]);
   var opts=shuffle([e].concat(ds));
   if(Q.dir==='j2c'){$('qw').innerHTML=ruby(e.headword_ruby);$('qpitch').innerHTML=pitchBlock(e);$('qplay').style.display=''}
   else{$('qw').innerHTML='<span style="font-size:.6em">'+esc(e.meaning_zh)+'</span>';$('qpitch').innerHTML='';$('qplay').style.display='none'}
-  $('qopts').innerHTML=opts.map(function(o,i){return '<button class="opt" data-id="'+o.id+'">'+'ABCD'[i]+'. '+(Q.dir==='j2c'?esc(o.meaning_zh):esc(o.headword)+'（'+esc(o.reading)+'）')+'</button>'}).join('');
+  $('qopts').innerHTML=opts.map(function(o,i){return '<button class="opt" type="button" data-id="'+o.id+'">'+'ABCD'[i]+'. '+(Q.dir==='j2c'?esc(o.meaning_zh):esc(o.headword)+'（'+esc(o.reading)+'）')+'</button>'}).join('');
+}
+function showRoundEnd(){
+  if(Q.round===0){Q.firstOk=Q.ok;Q.firstN=Q.done}
+  var left=Q.miss.length;
+  $('qpitch').innerHTML='';$('qplay').style.display='none';$('qfb').textContent='';$('qex').innerHTML='';$('qnext').style.display='none';
+  if(left===0){
+    Q.phase='done';
+    if(Q.round===0){
+      $('qprog').textContent='第 '+Q.firstN+' / '+Q.firstN+' 题';
+      $('qscore').textContent='答对 '+Q.firstOk+' / '+Q.firstN;
+      $('qw').innerHTML='<span style="font-size:.6em">完成！答对 '+Q.firstOk+' / '+Q.firstN+'</span>';
+      $('qopts').innerHTML='<button class="opt" type="button" id="qagain">🔁 再来一组</button>';
+    }else{
+      $('qprog').textContent='首轮 '+Q.firstOk+' / '+Q.firstN;
+      $('qscore').textContent='错题已全部答对';
+      $('qw').innerHTML='<span style="font-size:.55em">完成！首轮 '+Q.firstOk+' / '+Q.firstN+'，错题已练完</span>';
+      $('qopts').innerHTML='<p class="qnote">错题都已答对，练习结束。</p><button class="opt" type="button" id="qagain">🔁 再来一组</button>';
+    }
+    $('qagain').onclick=function(ev){ev.stopPropagation();startQuiz()};
+    return;
+  }
+  Q.phase='between';
+  var nxt=Q.round+1;
+  $('qprog').textContent='首轮 '+Q.firstOk+' / '+Q.firstN;
+  $('qscore').textContent='错题第 '+nxt+' 轮 · 待练 '+left;
+  $('qw').innerHTML='<span style="font-size:.55em">首轮答对 '+Q.firstOk+' / '+Q.firstN+'</span>';
+  $('qopts').innerHTML='<p class="qnote">还有 '+left+' 题未答对。答对后移出，仍错的留到下一轮。</p><button class="btn" type="button" id="qcont">继续错题（'+left+'）</button><button class="opt" type="button" id="qagain">🔁 再来一组</button>';
+  $('qcont').onclick=function(ev){ev.stopPropagation();continueMiss()};
+  $('qagain').onclick=function(ev){ev.stopPropagation();startQuiz()};
+}
+function continueMiss(){
+  Q.list=shuffle(Q.miss.slice());
+  Q.miss=[];
+  Q.round=Q.round+1;
+  Q.i=0;Q.ok=0;Q.done=0;
+  showQ();
 }
 $('qopts').addEventListener('click',function(ev){
-  var b=ev.target.closest('.opt');if(!b||$('qnext').style.display!=='none')return;
-  var e=Q.list[Q.i],right=+b.getAttribute('data-id')===e.id;Q.done++;if(right)Q.ok++;
-  var bs=$('qopts').querySelectorAll('.opt');for(var i=0;i<bs.length;i++)if(+bs[i].getAttribute('data-id')===e.id)bs[i].classList.add('ok');
+  var b=ev.target.closest('.opt');
+  if(!b||Q.phase!=='ask'||!$('qopts').contains(b))return;
+  var e=Q.list[Q.i],right=+b.getAttribute('data-id')===e.id;
+  Q.phase='review';
+  Q.done++;if(right)Q.ok++;else Q.miss.push(e);
+  var bs=$('qopts').querySelectorAll('.opt');
+  for(var i=0;i<bs.length;i++)if(+bs[i].getAttribute('data-id')===e.id)bs[i].classList.add('ok');
   if(!right)b.classList.add('ng');
   $('qfb').innerHTML=right?'<span style="color:#1c8b3c">⭕ 正确！</span>':'<span style="color:#c0392b">❌ 错了，正确答案已标绿</span>';
   $('qw').innerHTML=ruby(e.headword_ruby);$('qpitch').innerHTML=pitchBlock(e);$('qplay').style.display='';
-  $('qex').innerHTML='<div class="meaning">'+esc(e.meaning_zh)+'</div><div class="ex"><button class="play sm" id="qps">🔊</button><div class="t"><div class="ja">'+ruby(e.example_ruby)+'</div><div class="zh">'+esc(e.example_zh)+'</div></div></div>';
+  $('qex').innerHTML='<div class="meaning">'+esc(e.meaning_zh)+'</div><div class="ex"><button class="play sm" type="button" id="qps">🔊</button><div class="t"><div class="ja">'+ruby(e.example_ruby)+'</div><div class="zh">'+esc(e.example_zh)+'</div></div></div>';
   $('qps').onclick=function(){playKey(e.id+'_s_'+S.voice,'s',this,null,null)};
-  $('qscore').textContent='答对 '+Q.ok+' / '+Q.done;
-  $('qnext').textContent=Q.i+1<Q.list.length?'下一题 ▶':'看结果';$('qnext').style.display='';
+  $('qscore').textContent=scoreLine();
+  $('qnext').textContent=Q.i+1<Q.list.length?'下一题 ▶':'看结果';
+  $('qnext').style.display='';
 });
-$('qnext').addEventListener('click',function(){Q.i++;if(Q.i<Q.list.length)showQ();else{$('qw').innerHTML='<span style="font-size:.6em">完成！答对 '+Q.ok+' / '+Q.done+'</span>';$('qpitch').innerHTML='';$('qplay').style.display='none';$('qopts').innerHTML='<button class="opt" id="qagain">🔁 再来一组</button>';$('qfb').textContent='';$('qex').innerHTML='';$('qnext').style.display='none';$('qagain').onclick=startQuiz}});
-$('qplay').addEventListener('click',function(){playKey(Q.list[Q.i].id+'_w_'+S.voice,'w',this,null,null)});
-$('qclose').addEventListener('click',function(){stopOnly();$('quiz').style.display='none';document.body.style.overflow=''});
+$('qnext').addEventListener('click',function(){
+  if(Q.phase!=='review')return;
+  Q.i++;
+  if(Q.i<Q.list.length)showQ();
+  else showRoundEnd();
+});
+$('qplay').addEventListener('click',function(){
+  if(!Q.list.length||Q.i>=Q.list.length||Q.phase==='between'||Q.phase==='done'||Q.phase==='idle')return;
+  playKey(Q.list[Q.i].id+'_w_'+S.voice,'w',this,null,null);
+});
+$('qclose').addEventListener('click',function(){stopOnly();$('quiz').style.display='none';document.body.style.overflow='';Q.phase='idle'});
 $('quizBtn').addEventListener('click',startQuiz);
-var rds=document.querySelectorAll('input[name=qdir]');for(var i=0;i<rds.length;i++)rds[i].addEventListener('change',function(){Q.dir=this.value;if(Q.list.length&&Q.i<Q.list.length&&$('qnext').style.display==='none')showQ()});
+var rds=document.querySelectorAll('input[name=qdir]');
+for(var i=0;i<rds.length;i++)rds[i].addEventListener('change',function(){Q.dir=this.value;if(Q.phase==='ask'&&Q.list.length&&Q.i<Q.list.length)showQ()});
 buildChips();render();
 window.__ready=true;
 })();
