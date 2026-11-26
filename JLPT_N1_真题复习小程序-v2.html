@@ -734,6 +734,174 @@
   const SEC_NAME = {1:'問題 1 · 漢字読み', 2:'問題 2 · 文脈規定', 3:'問題 3 · 言い換え類義', 4:'問題 4 · 用法', 5:'問題 5 · 文法形式', 6:'問題 6 · 文の組み立て★'};
   const SMALL_KANA = new Set(['ゃ','ゅ','ょ','ぁ','ぃ','ぅ','ぇ','ぉ','ャ','ュ','ョ','ァ','ィ','ゥ','ェ','ォ']);
 
+  // ==================== INJECT REGISTER BADGE STYLES ====================
+  (function injectRegStyles() {
+    const st = document.createElement('style');
+    st.textContent = `
+      .reg-line { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12px; color:var(--ink-sub); }
+      .reg-badge { display:inline-block; padding:1px 7px; border-radius:5px; font-size:11.5px; font-weight:700; line-height:1.45; white-space:nowrap; }
+      .reg-oral { background:#fff3e0; color:#b45309; border:1px solid #fcd34d; }
+      .reg-common { background:#eef4f8; color:#2b547e; border:1px solid #c7d9ec; }
+      .reg-written { background:#f3effb; color:#5b3a99; border:1px solid #d7c9f2; }
+    `;
+    document.head.appendChild(st);
+  })();
+
+  // ==================== REGISTER (语体) CLASSIFICATION ====================
+  const VOCAB_ORAL = new Set([
+    "うすうす","めきめき","どんより","ごまかす","冷やかす","ありきたり","とっさに","へとへと",
+    "足手まとい","がやがや","ずばり","ぞんざい","つくづく","デマ","ネック","うやむや",
+    "お手上げ","こじれる","ぎくしゃく","なつく","ろくに","うずうず","ぼやく","みっちり",
+    "ルーズ","かさばる","しぶとい","せかせかと","がらりと","しくじる","指図","張り合う",
+    "むっとする","ぼんやり","からかう","とっくに","どろどろ","ぐったり","うろうろ","大して",
+    "ぐらぐら","呆れる","しつこい","いい加減","息抜き","いまに","ぐちゃぐちゃ","じきに",
+    "説教","めちゃめちゃ","面倒くさい","雑","じわじわ","ふざける","べたべた","仕返し",
+    "せいぜい","はきはき","あやす","ありえない","ずうずうしい","だいぶ","どっさり","情けない",
+    "なれなれしい","張り切る","びっしょり","厚かましい","がっかり","ぐずぐず","すっきり","だらだら",
+    "どうしようもない","びっくり","しょんぼり","怒鳴る","盛り上がる","うっとり","お世辞","おどおど",
+    "愚痴","ざっと","素敵","急かす","ちらっと","はらはら","びくびく","踏ん張る",
+    "まさか","めっきり","うそ","けち","じめじめ","だらしない","のんびり","禿げる",
+    "すいすい","突っ込む","手こずる","のろのろ","ふらふら","放題","ルックス","あっさり",
+    "けろりと","ごちゃごちゃ","ずらりと","ちらりと","くねくね","ぬるぬる","なんとなく","任す"
+  ]);
+
+  const VOCAB_WRITTEN = new Set([
+    "脱却","掲げる","進呈","推移","還元","軌跡","担う","尊い","貢献","施す","加筆","緩和","合併",
+    "胸中","怪訝","検閲","悉く","崇高","着手","脳裏","余暇","侮る","おろそか","資質","手腕",
+    "適応","踏襲","払拭","抱負","奔放","目下","委託","戒める","うなだれる","交錯","根底","誓約書",
+    "撤回","難航","粘膜","風潮","腐敗","補填","もたらす","快挙","改修","結成","尺度","助長",
+    "完結","兆し","懸念","諭す","収容","振興","潜伏","騒然","秩序","痛烈","不慮","奮闘",
+    "没頭","押収","均等","緊迫","枯渇","克明","出馬","熟知","絶賛","存続","望ましい","秘める",
+    "遺憾","憤る","旺盛","かたくな","寡黙","却下","寄与","交付","絶滅","治癒","貧富","紛糾",
+    "閉鎖","余波","危ぶむ","促す","円滑","怠る","架空","かねて","凝視","経緯","巧妙","失脚",
+    "実に","壮大","措置","撤去","当面","もはや","異例","吟味","覆す","債務","執着","精力的",
+    "つぶさに","表明","脈絡","要望","歴然","各々","基調","驚嘆","起用","作動","多角的","手立て",
+    "滞る","忍耐","膨大","偽り","回顧","丘陵","嫌悪感","堅実","言及","遮断","自粛","速やか",
+    "つかの間","漠然","抜粋","妨害","面識","逸脱","いとも","開拓","緊密","若干","打診","重複",
+    "遂げる","復興","了承","一環","潤す","傾斜","照会","称える","提起","入念","配布","阻む",
+    "非","発足","滅びる","転換","詳細","隔たり","自制","経路","絶大","供述","普遍的","拒む",
+    "くらます","混入","注入","添加","興る","獲得","合致","喪失","相続","企る","伝承","罵る",
+    "排斥","破棄","原本","混合","受命","衰退","船舶","脱落","低迷","咎める","戒律","拡充",
+    "慣習","急激","旧跡","結合","好況","採集","集約","主導","実施","整備","繁栄","返却",
+    "返済","清らか","心境","自重","自任","譲渡","全幅","配給","排出","呆然","やせ衰える","流出",
+    "危うい","依存","共鳴","緊縛","現存","高名","存亡","探知","留める","儚い","風土","風物",
+    "風情","威嚇","意義","除去","盛況","全盛","転移","投影","平作","平素","閉塞","設ける",
+    "装う","岩礁","消去","処置","甚大","開示","強制的","清い","沽券","財務","証言","整然",
+    "責務","変容","引用","教壇","建設的","採取","採択","人体","鮮烈","認定","熱烈","廃止",
+    "博大","莫大","安易","安泰","開校","改組","階層","隔離","橋梁","拒絶","残留","所持",
+    "自責","設置","切実","委ねる","あえて","いっそう","解析","快諾","拡散","遮る","試行",
+    "自問","従来","辿る","脱退","つねに","腹腔","由来","朗誦","籠城","わずかに","仰ぐ",
+    "悪","意欲","敬う","階差","課す","下す","稽査","遡る","昨今","雑菌","志願","博労",
+    "望楼","没"
+  ]);
+
+  const GRAMMAR_ORAL = new Set([
+    "～なんかでいいんですか",
+    "～んじゃないかというぐらい",
+    "～んだもん（～のだもの）",
+    "～といて（～ておいて）",
+    "～くせに",
+    "～ものか／もんか",
+    "～んじゃなかった",
+    "～ておけばいい",
+    "なにも～なくてもいい",
+    "～ったって（～といったって）",
+    "～てくれればよかったのに",
+    "～んなら（口語仮定）"
+  ]);
+
+  const GRAMMAR_WRITTEN = new Set([
+    "～にあっても",
+    "～としながらも",
+    "～ほどではないものの",
+    "決して～(よ)うとはしない",
+    "～てまいります（丁重語）",
+    "～ずに済むわけがない",
+    "～ない限り",
+    "～により（原因・理由）",
+    "～と引き換えに／～つつある",
+    "～を受けて",
+    "～なり",
+    "～恐れがある以上",
+    "～があってはならない",
+    "～がゆえに",
+    "～にして（年齢・回数）",
+    "お越しになる際は（尊敬語＋際は）",
+    "あたかも～かのごとく",
+    "～ことはない（＋受身）",
+    "～見込みだ",
+    "～うえに／～を踏まえ",
+    "～つつも／～に至る",
+    "～を機に",
+    "～といたしましては",
+    "見える／お見えになる（尊敬語）",
+    "～限りでは",
+    "～からしか～ない",
+    "～ずにいたところ",
+    "おいでくださる（尊敬語）",
+    "～反面",
+    "～ながらにして",
+    "～にあたり／にあたって",
+    "今でこそ～が",
+    "なんら～ない",
+    "～ばよかったものを",
+    "～かと思いきや",
+    "～からには",
+    "～極まりない",
+    "～を皮切りに",
+    "～とするあまり",
+    "～といったことになりかねない",
+    "～にすぎない",
+    "～次第です",
+    "～までもない",
+    "～だろうに",
+    "～のみならず",
+    "～をもってすれば",
+    "お迎えに上がります（謙譲語）",
+    "～うえで欠かせない",
+    "～ことが緊急の課題だ",
+    "～を後世に伝えようと",
+    "～を余儀なくされる",
+    "～を控えて",
+    "～と存じます（謙譲語）",
+    "～べきところを",
+    "～ないとも限らない",
+    "～かねない",
+    "～(よ)うにも～ない",
+    "～わけにもいかず",
+    "～にして初めて",
+    "～べく",
+    "なんと～ことか",
+    "～(さ)せていただく（謙譲語）",
+    "～ことなしに",
+    "～における",
+    "～に先立ち／に先立って",
+    "～とあって",
+    "お申し込みください（尊敬語）",
+    "～ないまでも",
+    "～ものとみている",
+    "～ことを目的に",
+    "～いる限り",
+    "～は否めない",
+    "ご～なさいます（尊敬語）",
+    "～においてさえ",
+    "～抜いた末に",
+    "～なくして何が～だ",
+    "～にかけては"
+  ]);
+
+  function getVocabRegister(word) {
+    if (VOCAB_ORAL.has(word)) return { label: '偏日常口语', cls: 'reg-oral', desc: '多用于日常对话・口头表达' };
+    if (VOCAB_WRITTEN.has(word)) return { label: '偏书面语', cls: 'reg-written', desc: '多用于新闻・评论・正式文章' };
+    return { label: '日常・书面共通', cls: 'reg-common', desc: '口语与书面文章均自然可用' };
+  }
+
+  function getGrammarRegister(pattern) {
+    if (GRAMMAR_ORAL.has(pattern)) return { label: '偏日常口语', cls: 'reg-oral', desc: '多用于口语会话・随意表达' };
+    if (GRAMMAR_WRITTEN.has(pattern)) return { label: '偏书面语', cls: 'reg-written', desc: '多用于书面文章・正式场合' };
+    return { label: '日常・书面共通', cls: 'reg-common', desc: '口语与书面均常用' };
+  }
+
   // ==================== STORAGE (Stars & Wrong Book) ====================
   const STORE_KEY_STARS = 'jlpt_n1_stars_v1';
   const STORE_KEY_WRONG = 'jlpt_n1_wrong_v1';
@@ -756,6 +924,80 @@
 
   function quizUid(q) { return `${q.exam}_s${q.sec}_q${q.q}`; }
   const QUIZ_BY_UID = Object.fromEntries(DATA.quiz.map(q => [quizUid(q), q]));
+
+  // ==================== SENTENCE TRANSLATION INDEX ====================
+  function normJaForMatch(s) {
+    return String(s || '').replace(/[\s\u3000、。・，．,.「」『』（）()【】★!?！？]/g, '');
+  }
+
+  const EX_ZH_BY_NORM = new Map();
+  DATA.vocab.forEach(v => {
+    if (v.ex && v.exZh) {
+      const k = normJaForMatch(v.ex);
+      if (k && (!EX_ZH_BY_NORM.has(k) || v.isOrigEx)) {
+        EX_ZH_BY_NORM.set(k, v.exZh);
+      }
+    }
+  });
+
+  function bigramDice(a, b) {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    if (a.length < 2 || b.length < 2) return a === b ? 1 : 0;
+    const mapA = new Map();
+    for (let i = 0; i < a.length - 1; i++) {
+      const bg = a.slice(i, i + 2);
+      mapA.set(bg, (mapA.get(bg) || 0) + 1);
+    }
+    let overlap = 0;
+    for (let i = 0; i < b.length - 1; i++) {
+      const bg = b.slice(i, i + 2);
+      const cnt = mapA.get(bg) || 0;
+      if (cnt > 0) {
+        overlap++;
+        mapA.set(bg, cnt - 1);
+      }
+    }
+    return (2 * overlap) / ((a.length - 1) + (b.length - 1));
+  }
+
+  function findQuizSentenceZh(q, speakText) {
+    if (q.stemZh) return q.stemZh;
+    if (q.exZh) return q.exZh;
+    if (q.zh) return q.zh;
+
+    const normTarget = normJaForMatch(speakText);
+    if (!normTarget) return '';
+
+    if (EX_ZH_BY_NORM.has(normTarget)) return EX_ZH_BY_NORM.get(normTarget);
+
+    const candidates = [];
+    if (q.target && VOCAB_MAP[q.target]) candidates.push(VOCAB_MAP[q.target]);
+    const ansWordKey = q.optWords && q.optWords[q.ans - 1];
+    if (ansWordKey && VOCAB_MAP[ansWordKey]) candidates.push(VOCAB_MAP[ansWordKey]);
+    DATA.vocab.forEach(v => {
+      if (v.sources && v.sources.some(s => s.exam === q.exam && s.sec === q.sec && s.q === q.q)) {
+        candidates.push(v);
+      }
+    });
+
+    let bestZh = '';
+    let bestScore = 0;
+    const seen = new Set();
+    for (const v of candidates) {
+      if (!v || seen.has(v.id) || !v.ex || !v.exZh) continue;
+      seen.add(v.id);
+      const nv = normJaForMatch(v.ex);
+      if (!nv) continue;
+      if (nv.includes(normTarget) || normTarget.includes(nv)) return v.exZh;
+      const sc = bigramDice(normTarget, nv);
+      if (sc > bestScore) {
+        bestScore = sc;
+        bestZh = v.exZh;
+      }
+    }
+    return bestScore >= 0.45 ? bestZh : '';
+  }
 
   // ==================== COUNTDOWN ====================
   function updateCountdown() {
@@ -782,7 +1024,6 @@
   function renderPitchSVG(kana, pitch) {
     const morae = splitMorae(kana);
     const n = morae.length;
-    // Compute H (1) or L (0) for each mora + trailing particle (が)
     const levels = [];
     for (let i = 1; i <= n; i++) {
       if (pitch === 0) levels.push(i === 1 ? 0 : 1);
@@ -794,7 +1035,7 @@
     const step = 24;
     const padX = 14;
     const yH = 10, yL = 26, textY = 44;
-    const totalCols = n + 1; // +1 for trailing particle indicator
+    const totalCols = n + 1;
     const width = padX * 2 + (totalCols - 1) * step + 10;
     const height = 50;
 
@@ -810,19 +1051,15 @@
     const py = particleLevel ? yH : yL;
 
     let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="display:block;">`;
-    // Solid line across word morae
     svg += `<path d="${pathD}" fill="none" stroke="#26466d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
-    // Dashed line to particle
     const last = pts[pts.length - 1];
     svg += `<line x1="${last.x}" y1="${last.y}" x2="${px}" y2="${py}" stroke="${last.drop ? '#c84b31' : '#8a92a3'}" stroke-width="1.8" stroke-dasharray="3 2.5"/>`;
 
-    // If drop happens between mora k and k+1, highlight the falling segment in vermilion
     if (pitch > 0 && pitch < n) {
       const a = pts[pitch - 1], b = pts[pitch];
       svg += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#c84b31" stroke-width="2.6"/>`;
     }
 
-    // Mora dots & labels
     pts.forEach(p => {
       const fill = p.drop ? '#c84b31' : (p.hi ? '#26466d' : '#ffffff');
       const stroke = p.drop ? '#c84b31' : '#26466d';
@@ -830,7 +1067,6 @@
       svg += `<text x="${p.x}" y="${textY}" text-anchor="middle" font-size="12.5" font-weight="${p.drop ? '800' : '600'}" fill="${p.drop ? '#c84b31' : '#1f2430'}" class="jp">${escapeHtml(p.label)}</text>`;
     });
 
-    // Particle hollow dot
     svg += `<circle cx="${px}" cy="${py}" r="3.2" fill="#ffffff" stroke="#8a92a3" stroke-width="1.6"/>`;
     svg += `<text x="${px}" y="${textY}" text-anchor="middle" font-size="10.5" fill="#9ca3af" class="jp">が</text>`;
     svg += `</svg>`;
@@ -853,14 +1089,56 @@
   let selectedVoice = null;
   let activeSpeakBtn = null;
 
+  const SPEAK_WORD_OVERRIDES = {
+    '配布': '配布',
+    '派': '派',
+    '余波': '余波',
+    '非': '非'
+  };
+
+  function getWordSpeakText(v) {
+    if (!v) return '';
+    if (SPEAK_WORD_OVERRIDES[v.word]) return SPEAK_WORD_OVERRIDES[v.word];
+    const kana = String(v.kana || '');
+    if (v.word && v.word !== kana) {
+      if (kana.includes('いふ') || /^(は|へ|を)$/.test(kana) || /[はへ]$/.test(kana)) {
+        return v.word;
+      }
+    }
+    return kana || v.word || '';
+  }
+
+  function buildQuizSentenceInfo(q) {
+    const rawStem = String(q.stem || '');
+    const ansOpt = (q.opts && q.opts[q.ans - 1]) ? String(q.opts[q.ans - 1]) : '';
+    const blankRe = /[\s\u3000]*[（(][\s\u3000_＿]*[）)][\s\u3000]*|[\s\u3000]*[_＿]{2,}[\s\u3000]*/;
+
+    let speakText = '';
+    let displayHtml = '';
+    let label = '真题原句';
+
+    if (q.sec === 2 && blankRe.test(rawStem) && ansOpt) {
+      speakText = rawStem.replace(blankRe, ansOpt).replace(/[【】★]/g, '');
+      displayHtml = escapeHtml(rawStem).replace(
+        blankRe,
+        `<span style="color:var(--green); border-bottom:2px solid var(--green); padding:0 2px; font-weight:800;">${escapeHtml(ansOpt)}</span>`
+      );
+      label = '完整原句（已填入正解）';
+    } else {
+      speakText = rawStem.replace(/[【】★]/g, '');
+      displayHtml = escapeHtml(rawStem).replace(/【([^】]+)】/g, '<span class="ul-target">$1</span>');
+    }
+
+    const zh = findQuizSentenceZh(q, speakText);
+    return { speakText, displayHtml, label, zh };
+  }
+
   function scoreFemaleJaVoice(v) {
     const name = (v.name || '').toLowerCase();
     const uri = (v.voiceURI || '').toLowerCase();
     const hay = name + ' ' + uri;
     let score = 0;
-    // Penalize known male voices
     if (/otoya|hattori|keita|ichiro|male|kenji|daichi/.test(hay)) score -= 100;
-    // Top natural female voices
     if (/nanami.*online|nanami.*natural/.test(hay)) score += 120;
     else if (/kyoko.*premium|kyoko.*enhanced/.test(hay)) score += 115;
     else if (/nanami/.test(hay)) score += 100;
@@ -921,7 +1199,6 @@
     const cleanText = String(text).replace(/[【】★]/g, '').trim();
     if (!cleanText) return;
 
-    // Clean stop any previous speech so every click reads once cleanly
     speechSynthesis.cancel();
     if (activeSpeakBtn) {
       activeSpeakBtn.classList.remove('speaking');
@@ -943,11 +1220,9 @@
       if (btnEl) btnEl.classList.remove('speaking');
       if (activeSpeakBtn === btnEl) activeSpeakBtn = null;
     };
-    // Small timeout prevents iOS Safari cancel-then-speak race bug
     setTimeout(() => speechSynthesis.speak(utt), 30);
   }
 
-  // Audio modal wiring
   const audioModal = document.getElementById('audioModal');
   document.getElementById('openAudioModalBtn').onclick = () => { refreshVoices(); audioModal.classList.add('open'); };
   document.getElementById('closeAudioModalBtn').onclick = () => audioModal.classList.remove('open');
@@ -985,7 +1260,6 @@
   };
   document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
 
-  // Populate year selectors
   function populateYearSelects() {
     const selects = [
       document.getElementById('vocabYear'),
@@ -1036,19 +1310,52 @@
       btnEl.textContent = isOn ? '★' : '☆';
     }
     updateCounters();
-    // If currently in star-only filter, re-render list cleanly
     if (vocabState.starOnly && id.startsWith('w:')) renderVocab();
     if (grammarState.starOnly && id.startsWith('g_')) renderGrammar();
   }
 
   // ==================== VOCAB TAB ====================
-  const vocabState = { q:'', year:'all', pitch:'all', role:'all', starOnly:false, limit:36 };
+  const vocabState = { q:'', year:'all', pitch:'all', reg:'all', role:'all', starOnly:false, limit:36 };
+
+  function initRegisterFilters() {
+    const vPitch = document.getElementById('vocabPitchFilter');
+    if (vPitch && !document.getElementById('vocabRegFilter')) {
+      const sel = document.createElement('select');
+      sel.className = 'select-ctrl';
+      sel.id = 'vocabRegFilter';
+      sel.innerHTML = `
+        <option value="all">全部语体</option>
+        <option value="偏日常口语">偏日常口语</option>
+        <option value="日常・书面共通">日常・书面共通</option>
+        <option value="偏书面语">偏书面语</option>
+      `;
+      vPitch.insertAdjacentElement('afterend', sel);
+      sel.onchange = (e) => { vocabState.reg = e.target.value; vocabState.limit = 36; renderVocab(); };
+    }
+
+    const gSec = document.getElementById('grammarSec');
+    if (gSec && !document.getElementById('grammarRegFilter')) {
+      const sel = document.createElement('select');
+      sel.className = 'select-ctrl';
+      sel.id = 'grammarRegFilter';
+      sel.innerHTML = `
+        <option value="all">全部语体</option>
+        <option value="偏日常口语">偏日常口语</option>
+        <option value="日常・书面共通">日常・书面共通</option>
+        <option value="偏书面语">偏书面语</option>
+      `;
+      gSec.insertAdjacentElement('afterend', sel);
+      sel.onchange = (e) => { grammarState.reg = e.target.value; renderGrammar(); };
+    }
+  }
+  initRegisterFilters();
 
   function getFilteredVocab() {
     const q = vocabState.q.trim().toLowerCase();
     return DATA.vocab.filter(v => {
       if (vocabState.year !== 'all' && !v.years.includes(vocabState.year)) return false;
       if (vocabState.pitch !== 'all' && v.pitchType !== vocabState.pitch) return false;
+      if (vocabState.reg !== 'all' && getVocabRegister(v.word).label !== vocabState.reg) return false;
       if (vocabState.role === 'core' && !v.isCore) return false;
       if (vocabState.role === 'distractor' && v.isCore) return false;
       if (vocabState.role === 'multi' && v.sources.length < 2) return false;
@@ -1063,6 +1370,7 @@
 
   function renderVocabCard(v) {
     const isStar = starredSet.has(v.id);
+    const reg = getVocabRegister(v.word);
     const srcsHtml = v.sources.map(s => {
       const exMeta = EXAM_MAP[s.exam] || {label:s.exam, color:'emerald', tag:''};
       const cls = s.role === '正解' ? 'src-tag core' : 'src-tag';
@@ -1079,7 +1387,7 @@
           </div>
         </div>
         <div class="vc-actions">
-          <button class="speak-btn" data-speak="${escapeHtml(v.kana)}" title="播放单词发音">🔊 读词</button>
+          <button class="speak-btn" data-speak="${escapeHtml(getWordSpeakText(v))}" title="播放单词发音">🔊 读词</button>
           <button class="star-btn ${isStar ? 'starred' : ''}" data-star="${escapeHtml(v.id)}" title="收藏此词">${isStar ? '★' : '☆'}</button>
         </div>
       </div>
@@ -1090,6 +1398,11 @@
           <span class="jp">${escapeHtml(v.kana)}</span> ${v.pitch}型
           <span class="pitch-type-badge ${pitchBadgeClass(v.pitchType)}">${v.pitchType}</span>
         </div>
+      </div>
+
+      <div class="reg-line">
+        <span class="reg-badge ${reg.cls}">${reg.label}</span>
+        <span>${reg.desc}</span>
       </div>
 
       <div class="vc-meaning">${escapeHtml(v.meaning)}</div>
@@ -1132,7 +1445,6 @@
     }
   }
 
-  // Event delegation for speak & star buttons across entire document
   document.addEventListener('click', (e) => {
     const sp = e.target.closest('[data-speak]');
     if (sp) {
@@ -1146,7 +1458,6 @@
     }
   });
 
-  // Vocab controls
   const vSearch = document.getElementById('vocabSearch');
   const vClear = document.getElementById('vocabSearchClear');
   vSearch.oninput = () => {
@@ -1175,13 +1486,14 @@
   };
 
   // ==================== GRAMMAR TAB ====================
-  const grammarState = { q:'', year:'all', sec:'all', starOnly:false };
+  const grammarState = { q:'', year:'all', sec:'all', reg:'all', starOnly:false };
 
   function renderGrammar() {
     const q = grammarState.q.trim().toLowerCase();
     const list = DATA.grammar.filter(g => {
       if (grammarState.year !== 'all' && !g.sources.some(s => s.exam === grammarState.year)) return false;
       if (grammarState.sec !== 'all' && !g.sources.some(s => String(s.sec) === grammarState.sec)) return false;
+      if (grammarState.reg !== 'all' && getGrammarRegister(g.pattern).label !== grammarState.reg) return false;
       if (grammarState.starOnly && !starredSet.has(g.id)) return false;
       if (q) {
         const hay = `${g.pattern} ${g.conn} ${g.meaning} ${g.ex} ${g.exZh}`.toLowerCase();
@@ -1199,6 +1511,7 @@
 
     box.innerHTML = list.map(g => {
       const isStar = starredSet.has(g.id);
+      const reg = getGrammarRegister(g.pattern);
       const srcsHtml = g.sources.map(s => {
         const exMeta = EXAM_MAP[s.exam] || {label:s.exam, color:'emerald', tag:''};
         return `<span class="src-tag core" title="${escapeHtml(exMeta.tag)}"><span class="dot dot-${exMeta.color}"></span>${exMeta.label} 問題${s.sec} Q${s.q}</span>`;
@@ -1208,9 +1521,15 @@
         <div class="gc-head">
           <div>
             <div class="gc-pattern jp">${escapeHtml(g.pattern)}</div>
-            <div class="gc-conn jp">接续：${escapeHtml(g.conn)}</div>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:4px;">
+              <span class="gc-conn jp" style="margin-top:0;">接续：${escapeHtml(g.conn)}</span>
+              <span class="reg-badge ${reg.cls}" title="${reg.desc}">${reg.label}</span>
+            </div>
           </div>
           <button class="star-btn ${isStar ? 'starred' : ''}" data-star="${escapeHtml(g.id)}" title="收藏此语法">${isStar ? '★' : '☆'}</button>
+        </div>
+        <div class="reg-line">
+          <span>语体说明：${reg.desc}</span>
         </div>
         <div class="gc-meaning">${escapeHtml(g.meaning)}</div>
         <div class="vc-example">
@@ -1280,7 +1599,7 @@
       items,
       idx: 0,
       picked: null,
-      records: [] // {q, pick, ok}
+      records: []
     };
     document.getElementById('quizSetupView').style.display = 'none';
     document.getElementById('quizSummaryView').style.display = 'none';
@@ -1337,6 +1656,7 @@
     }
 
     const isStar = starredSet.has(v.id);
+    const reg = getVocabRegister(v.word);
     const displayTitle = (q.sec === 1)
       ? `${escapeHtml(optText)}（对应词：${escapeHtml(v.word)}）`
       : (v.word === optText ? escapeHtml(v.word) : `${escapeHtml(optText)}（核心词：${escapeHtml(v.word)}）`);
@@ -1350,13 +1670,17 @@
           <span class="jp" style="font-size:13px; color:var(--primary); font-weight:700;">${escapeHtml(v.kana)}</span>
         </div>
         <div class="vc-actions">
-          <button class="speak-btn sm" data-speak="${escapeHtml(v.kana)}">🔊 读词</button>
+          <button class="speak-btn sm" data-speak="${escapeHtml(getWordSpeakText(v))}">🔊 读词</button>
           <button class="star-btn ${isStar ? 'starred' : ''}" data-star="${escapeHtml(v.id)}" style="width:28px;height:26px;font-size:15px;">${isStar ? '★' : '☆'}</button>
         </div>
       </div>
       <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
         <div class="pitch-svg-wrap">${renderPitchSVG(v.kana, v.pitch)}</div>
         <div class="pitch-meta">${v.pitch}型 <span class="pitch-type-badge ${pitchBadgeClass(v.pitchType)}">${v.pitchType}</span></div>
+      </div>
+      <div class="reg-line">
+        <span class="reg-badge ${reg.cls}">${reg.label}</span>
+        <span>${reg.desc}</span>
       </div>
       <div style="font-size:13.8px; color:var(--ink);"><strong>中文义：</strong>${escapeHtml(v.meaning)}</div>
     </div>`;
@@ -1378,10 +1702,10 @@
     }
 
     if (q.sec === 4) {
-      // Usage question: first show target word info card, then sentence-by-sentence breakdown!
       const tv = VOCAB_MAP[q.target];
       if (tv) {
         const isStar = starredSet.has(tv.id);
+        const reg = getVocabRegister(tv.word);
         html += `
         <div class="opt-explain-item is-ans">
           <div class="oe-head">
@@ -1391,13 +1715,17 @@
               <span class="jp" style="color:var(--primary); font-weight:700;">${escapeHtml(tv.kana)}</span>
             </div>
             <div class="vc-actions">
-              <button class="speak-btn sm" data-speak="${escapeHtml(tv.kana)}">🔊 读词</button>
+              <button class="speak-btn sm" data-speak="${escapeHtml(getWordSpeakText(tv))}">🔊 读词</button>
               <button class="star-btn ${isStar ? 'starred' : ''}" data-star="${escapeHtml(tv.id)}" style="width:28px;height:26px;font-size:15px;">${isStar ? '★' : '☆'}</button>
             </div>
           </div>
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
             <div class="pitch-svg-wrap">${renderPitchSVG(tv.kana, tv.pitch)}</div>
             <div class="pitch-meta">${escapeHtml(tv.kana)} ${tv.pitch}型 <span class="pitch-type-badge ${pitchBadgeClass(tv.pitchType)}">${tv.pitchType}</span></div>
+          </div>
+          <div class="reg-line">
+            <span class="reg-badge ${reg.cls}">${reg.label}</span>
+            <span>${reg.desc}</span>
           </div>
           <div style="font-size:14px;"><strong>中文释义：</strong>${escapeHtml(tv.meaning)}</div>
         </div>`;
@@ -1430,10 +1758,25 @@
       });
       html += `</div>`;
     } else {
-      // Sec 1, 2, 3: show target word card for sec 3 (paraphrase), plus all 4 options
+      const sentInfo = buildQuizSentenceInfo(q);
+      if (sentInfo.speakText) {
+        html += `
+        <div class="opt-explain-item" style="background:#ffffff; border-color:#c5d6ec;">
+          <div class="oe-head">
+            <div class="oe-badges">
+              <span class="ex-tag orig">${sentInfo.label}</span>
+            </div>
+            <button class="speak-btn sm" data-speak="${escapeHtml(sentInfo.speakText)}" title="播放完整原句发音">🔊 读原句</button>
+          </div>
+          <div class="jp" style="font-size:15px; font-weight:600; color:var(--ink); line-height:1.7;">${sentInfo.displayHtml}</div>
+          ${sentInfo.zh ? `<div style="font-size:13.5px; color:var(--ink-sub); border-top:1px dashed var(--border); padding-top:5px;"><strong>中文翻译：</strong>${escapeHtml(sentInfo.zh)}</div>` : ''}
+        </div>`;
+      }
+
       if (q.sec === 3 && VOCAB_MAP[q.target]) {
         const tv = VOCAB_MAP[q.target];
         const isStar = starredSet.has(tv.id);
+        const reg = getVocabRegister(tv.word);
         html += `
         <div class="opt-explain-item" style="background:#edf3fa; border-color:#bfd4ee;">
           <div class="oe-head">
@@ -1443,13 +1786,17 @@
               <span class="jp" style="color:var(--primary); font-weight:700;">${escapeHtml(tv.kana)}</span>
             </div>
             <div class="vc-actions">
-              <button class="speak-btn sm" data-speak="${escapeHtml(tv.kana)}">🔊 读词</button>
+              <button class="speak-btn sm" data-speak="${escapeHtml(getWordSpeakText(tv))}">🔊 读词</button>
               <button class="star-btn ${isStar ? 'starred' : ''}" data-star="${escapeHtml(tv.id)}" style="width:28px;height:26px;font-size:15px;">${isStar ? '★' : '☆'}</button>
             </div>
           </div>
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
             <div class="pitch-svg-wrap">${renderPitchSVG(tv.kana, tv.pitch)}</div>
             <div class="pitch-meta">${tv.pitch}型 <span class="pitch-type-badge ${pitchBadgeClass(tv.pitchType)}">${tv.pitchType}</span></div>
+          </div>
+          <div class="reg-line">
+            <span class="reg-badge ${reg.cls}">${reg.label}</span>
+            <span>${reg.desc}</span>
           </div>
           <div style="font-size:13.8px;"><strong>中文义：</strong>${escapeHtml(tv.meaning)}</div>
         </div>`;
@@ -1558,7 +1905,6 @@
       wrongBookSet.add(uid);
       saveSet(STORE_KEY_WRONG, wrongBookSet);
     } else if (wrongBookSet.has(uid) && s.title.includes('错题')) {
-      // Remove from wrong book once mastered in retry mode
       wrongBookSet.delete(uid);
       saveSet(STORE_KEY_WRONG, wrongBookSet);
     }
@@ -1586,7 +1932,6 @@
     const wrongRecs = s.records.filter(r => !r.ok);
     const acc = total ? Math.round((okCnt / total) * 100) : 0;
 
-    // Breakdown by section
     const bySec = [1,2,3,4].map(sec => {
       const sub = s.records.filter(r => r.q.sec === sec);
       if (!sub.length) return null;
@@ -1656,7 +2001,6 @@
     window.scrollTo({top: 0, behavior: 'smooth'});
   }
 
-  // Keyboard shortcuts during quiz (desktop convenience)
   document.addEventListener('keydown', (e) => {
     const runVisible = document.getElementById('quizRunView').style.display === 'block' &&
                        document.getElementById('panel-quiz').classList.contains('active');
@@ -1738,7 +2082,6 @@
     }
   }
 
-  // Backup Export / Import
   document.getElementById('exportDataBtn').onclick = () => {
     const payload = {
       exportedAt: new Date().toISOString(),
